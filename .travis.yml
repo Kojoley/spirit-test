@@ -1,0 +1,61 @@
+language: cpp
+
+sudo: false
+
+compiler:
+  - gcc
+#  - clang
+
+os: linux
+
+addons:
+  apt:
+    sources:
+#      - llvm-toolchain-precise-3.8
+      - ubuntu-toolchain-r-test
+    packages:
+#      - clang-3.8
+      - gcc-5
+      - g++-5
+
+env:
+  global:
+    - RUN_PARAMS="--runner=Kojoley --libraries=spirit"
+  matrix:
+    - TAG=master
+    - TAG=develop
+#    - TAG=boost-1.61.0
+#    - TAG=boost-1.60.0
+#    - TAG=boost-1.59.0
+#    - TAG=boost-1.58.0
+
+
+before_install:
+  - |
+    # Setting a toolset depend on a compiler
+    if [[ "$CXX" = "g++" ]]; then
+      export TOOLSET=gcc-5
+      export CXX=g++-5
+      export CC=gcc-5
+    elif [ "$CXX" = "clang++" ]; then
+      export TOOLSET=clang-3.8
+      export CXX=clang++-3.8
+      export CC=clang-3.8
+    else
+      echo Unknown toolchain
+      exit 1
+    fi
+  - echo TOOLSET=$TOOLSET CXX=$CXX CC=$CC
+  - export RUN_PARAMS="$RUN_PARAMS --tag=$TAG --toolsets=$TOOLSET"
+  - travis_retry wget https://raw.githubusercontent.com/boostorg/regression/develop/testing/src/run.py
+  - chmod +x run.py
+  - ./run.py get-tools $RUN_PARAMS
+  - ./run.py get-tools $RUN_PARAMS
+  - find . -name regression.py -type f
+      -exec sed -i -e 's/>>"%s" 2>\&1/2>\&1 \| tee -a "%s"/g'
+                   -e 's/--debug-configuration//g' {} +
+  - find . -name regression.py -type f -exec grep test_cmd {} +
+
+script:
+  - echo Parameters are $RUN_PARAMS
+  - ./run.py $RUN_PARAMS --skip-script-download #| sed 's/${HOME//\//\\\/}/~/g'
